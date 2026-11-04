@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DClinic — Многопрофильный медицинский центр</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .page-section { display: none; animation: fadeIn 0.25s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-btn.active { color: #0d9488; border-bottom: 2px solid #0d9488; font-weight: 600; }
+        .service-card.selected { border-color: #0d9488; background-color: #f0fdfa; box-shadow: 0 10px 25px -5px rgba(13, 148, 136, 0.15); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ КОНТАКТОВ -->
+    <div class="bg-teal-900 text-teal-50 text-xs py-2 px-4">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-6">
+                <span>📍 г. Астана, пр. Мангилик Ел, 55/2</span>
+                <span>🕒 Пн–Вс: 08:00 – 21:00 (Стационар 24/7)</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="headerStatusBadge" class="bg-teal-700/80 px-2.5 py-0.5 rounded-full font-medium">Активный пациент</span>
+                <span>📞 Call-центр: <strong>+7 (7172) 70-00-00</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ГЛАВНАЯ ШАПКА И МЕНЮ НАВИГАЦИИ -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+            <!-- Логотип -->
+            <div onclick="switchPage('home', 1)" class="flex items-center gap-3 cursor-pointer">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-600 to-cyan-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-md">
+                    D
+                </div>
+                <div>
+                    <div class="text-xl font-extrabold tracking-tight text-slate-900">D<span class="text-teal-600">Clinic</span></div>
+                    <div class="text-[11px] text-slate-500 font-medium">Центр доказательной медицины</div>
+                </div>
+            </div>
+
+            <!-- Навигация по 5 страницам сайта -->
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600">
+                <button onclick="switchPage('home', 1)" id="nav-home" class="nav-btn active py-7 transition">О клинике</button>
+                <button onclick="switchPage('services', 4)" id="nav-services" class="nav-btn py-7 transition">Услуги и цены</button>
+                <button onclick="switchPage('diagnostics', 2)" id="nav-diagnostics" class="nav-btn py-7 transition">Онлайн Check-up</button>
+                <button onclick="switchPage('finance', 3)" id="nav-finance" class="nav-btn py-7 transition">Скидки и рассрочка</button>
+                <button onclick="switchPage('cabinet', 5)" id="nav-cabinet" class="nav-btn py-7 transition">Личный кабинет</button>
+            </nav>
+
+            <!-- Кнопки действий -->
+            <div class="flex items-center gap-2.5">
+                <button onclick="switchPage('tz', 5)" id="nav-tz" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition" title="Показать таблицу проверки всех 25 задач из .docx">
+                    📋 Проверка ТЗ (25 задач)
+                </button>
+                <button onclick="switchPage('services', 4)" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition">
+                    Записаться на приём
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- УВЕДОМЛЕНИЕ ОБ ОШИБКЕ ВВОДА (Если не заполнены поля или неверный пароль) -->
+    <div id="globalErrorBanner" class="hidden max-w-7xl mx-auto mt-4 px-4 w-full">
+        <div class="bg-red-50 border-l-4 border-red-600 p-4 rounded-xl flex justify-between items-center shadow-sm">
+            <div class="flex items-center gap-3">
+                <span class="text-red-600 text-xl">⚠️</span>
+                <p id="globalErrorText" class="text-sm font-semibold text-red-800"></p>
+            </div>
+            <button onclick="switchPage('cabinet', 5)" class="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-red-700">
+                Проверить данные
+            </button>
+        </div>
+    </div>
+
+    <!-- ЕДИНАЯ ФОРМА ДАННЫХ (Синхронизирует все страницы с Java-сервером) -->
+    <form id="clinicForm" class="flex-grow">
+        <input type="hidden" name="section" id="inputSection" value="1">
+        <input type="hidden" name="serviceCategory" id="inputServiceCategory" value="CARDIO">
+
+        <!-- ======================================================================= -->
+        <!-- СТРАНИЦА 1: ГЛАВНАЯ (О КЛИНИКЕ) -->
+        <!-- ======================================================================= -->
+        <section id="page-home" class="page-section active">
+            <!-- Hero-баннер -->
+            <div class="bg-gradient-to-br from-teal-900 via-teal-800 to-cyan-900 text-white py-16 lg:py-24">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <span class="inline-block bg-teal-500/20 border border-teal-400/30 text-teal-200 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-5">
+                            Многопрофильный медицинский центр DClinic
+                        </span>
+                        <h1 class="text-3xl sm:text-5xl font-extrabold leading-tight mb-6">
+                            Забота о вашем здоровье на уровне мировых стандартов
+                        </h1>
+                        <p class="text-teal-100 text-base sm:text-lg mb-8 leading-relaxed">
+                            Передовая лабораторная и инструментальная диагностика, опытные врачи-эксперты, прозрачный расчёт стоимости лечения и интеллектуальная система оценки здоровья без очередей.
+                        </p>
+                        <div class="flex flex-wrap gap-4">
+                            <button type="button" onclick="switchPage('services', 4)" class="bg-white text-teal-900 hover:bg-teal-50 font-bold px-6 py-3.5 rounded-xl shadow-lg transition">
+                                Выбрать услугу и врача
+                            </button>
+                            <button type="button" onclick="switchPage('diagnostics', 2)" class="bg-teal-700/60 hover:bg-teal-700 border border-teal-400/40 text-white font-semibold px-6 py-3.5 rounded-xl transition">
+                                Пройти онлайн Check-up
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Карточка-визитка активной записи пациента -->
+                    <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <p class="text-xs uppercase tracking-wider text-teal-200 font-semibold">Электронная медкарта DClinic</p>
+                                <h3 id="heroPatientName" class="text-2xl font-bold mt-1">Ахметов Данияр</h3>
+                            </div>
+                            <span id="heroTriageBadge" class="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                Показатели в норме
+                            </span>
+                        </div>
+                        <div class="space-y-3 text-sm bg-black/20 rounded-xl p-4 mb-6">
+                            <div class="flex justify-between">
+                                <span class="text-teal-200">Возрастное отделение:</span>
+                                <span id="heroAgeDept" class="font-semibold text-right">Взрослое отделение</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-teal-200">Выбранное направление:</span>
+                                <span id="heroSelectedService" class="font-semibold text-right">Центр кардиологии</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-teal-200">Лечащий специалист:</span>
+                                <span id="heroDoctorName" class="font-semibold text-right">Д-р Ибраев Н.С.</span>
+                            </div>
+                            <div class="flex justify-between border-t border-white/15 pt-2 mt-2">
+                                <span class="text-teal-200">Расчётная стоимость приёма:</span>
+                                <span id="heroServiceCost" class="font-extrabold text-teal-300 text-base">26 600 ₸</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-teal-100">
+                            <span id="heroPriorityText">Приоритет очереди: Стандартный</span>
+                            <button type="button" onclick="switchPage('cabinet', 5)" class="underline font-semibold hover:text-white">
+                                Открыть медкарту →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статистика и преимущества -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="text-3xl font-extrabold text-teal-600 mb-1">5 отделений</div>
+                        <p class="text-xs text-slate-500">Терапия, Кардиология, Стоматология, Хирургия и Check-up</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="text-3xl font-extrabold text-teal-600 mb-1">До 20%</div>
+                        <p class="text-xs text-slate-500">Скидки по программе лояльности и поддержка полисов ДМС</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="text-3xl font-extrabold text-teal-600 mb-1">0% Рассрочка</div>
+                        <p class="text-xs text-slate-500">Умный подбор комфортного графика платежей на лечение</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="text-3xl font-extrabold text-teal-600 mb-1">Smart Triage</div>
+                        <p class="text-xs text-slate-500">Мгновенная оценка 5+ биометрических показателей онлайн</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Направления клиники на главной -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                <div class="flex flex-wrap justify-between items-end mb-8 gap-4">
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Ключевые направления DClinic</h2>
+                        <p class="text-slate-500 text-sm mt-1">Выберите нужное отделение для расчёта стоимости приёма и записи к специалисту</p>
+                    </div>
+                    <button type="button" onclick="switchPage('services', 4)" class="text-teal-600 font-semibold text-sm hover:underline">
+                        Перейти к калькулятору услуг →
+                    </button>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div onclick="selectCategoryAndGo('CARDIO')" class="bg-white p-6 rounded-2xl border border-slate-200 hover:border-teal-500 cursor-pointer transition shadow-sm hover:shadow-md">
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-2xl mb-4">❤️</div>
+                        <h3 class="font-bold text-lg mb-2">Центр кардиологии</h3>
+                        <p class="text-sm text-slate-600 mb-4">ЭКГ, УЗИ сердца (ЭхоКГ), суточный мониторинг давления и персональный подбор терапии.</p>
+                        <span class="text-xs font-bold text-teal-600">От 20 000 ₸ • Выбрать отделение →</span>
+                    </div>
+                    <div onclick="selectCategoryAndGo('DENTAL')" class="bg-white p-6 rounded-2xl border border-slate-200 hover:border-teal-500 cursor-pointer transition shadow-sm hover:shadow-md">
+                        <div class="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-2xl mb-4">🦷</div>
+                        <h3 class="font-bold text-lg mb-2">Цифровая стоматология</h3>
+                        <p class="text-sm text-slate-600 mb-4">3D-снимок, лечение под дентальным микроскопом, профессиональная гигиена и имплантация.</p>
+                        <span class="text-xs font-bold text-teal-600">От 25 000 ₸ • Выбрать отделение →</span>
+                    </div>
+                    <div onclick="selectCategoryAndGo('CHECKUP')" class="bg-white p-6 rounded-2xl border border-slate-200 hover:border-teal-500 cursor-pointer transition shadow-sm hover:shadow-md">
+                        <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-2xl mb-4">🧬</div>
+                        <h3 class="font-bold text-lg mb-2">Полный Check-up за 1 день</h3>
+                        <p class="text-sm text-slate-600 mb-4">25 анализов крови, УЗИ-скрининг органов, консультация куратора и паспорт здоровья.</p>
+                        <span class="text-xs font-bold text-teal-600">От 60 000 ₸ • Выбрать отделение →</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- СТРАНИЦА 2: УСЛУГИ И КАЛЬКУЛЯТОР СТОИМОСТИ -->
+        <!-- ======================================================================= -->
+        <section id="page-services" class="page-section py-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-extrabold text-slate-900">Отделения клиники и онлайн-калькулятор</h1>
+                    <p class="text-slate-500 text-sm mt-1">Выберите направление медицины, тариф комфортности и дополнительные опции для точного расчёта стоимости</p>
+                </div>
+
+                <!-- Карточки выбора из 5 категорий услуг -->
+                <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <div onclick="setCategory('THERAPY')" id="card-THERAPY" class="service-card bg-white p-4 rounded-2xl border-2 border-slate-200 cursor-pointer transition">
+                        <div class="text-2xl mb-2">🩺</div>
+                        <div class="font-bold text-sm">Терапия</div>
+                        <div class="text-xs text-slate-500 mt-1">База: 10 000 ₸</div>
+                    </div>
+                    <div onclick="setCategory('CARDIO')" id="card-CARDIO" class="service-card selected bg-white p-4 rounded-2xl border-2 border-slate-200 cursor-pointer transition">
+                        <div class="text-2xl mb-2">❤️</div>
+                        <div class="font-bold text-sm">Кардиология</div>
+                        <div class="text-xs text-slate-500 mt-1">База: 20 000 ₸</div>
+                    </div>
+                    <div onclick="setCategory('DENTAL')" id="card-DENTAL" class="service-card bg-white p-4 rounded-2xl border-2 border-slate-200 cursor-pointer transition">
+                        <div class="text-2xl mb-2">🦷</div>
+                        <div class="font-bold text-sm">Стоматология</div>
+                        <div class="text-xs text-slate-500 mt-1">База: 25 000 ₸</div>
+                    </div>
+                    <div onclick="setCategory('SURGERY')" id="card-SURGERY" class="service-card bg-white p-4 rounded-2xl border-2 border-slate-200 cursor-pointer transition">
+                        <div class="text-2xl mb-2">⚕️</div>
+                        <div class="font-bold text-sm">Хирургия</div>
+                        <div class="text-xs text-slate-500 mt-1">База: 45 000 ₸</div>
+                    </div>
+                    <div onclick="setCategory('CHECKUP')" id="card-CHECKUP" class="service-card bg-white p-4 rounded-2xl border-2 border-slate-200 cursor-pointer transition">
+                        <div class="text-2xl mb-2">🧬</div>
+                        <div class="font-bold text-sm">Полный Check-up</div>
+                        <div class="text-xs text-slate-500 mt-1">База: 60 000 ₸</div>
+                    </div>
+                </div>
+
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <!-- Настройки тарифа -->
+                    <div class="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-lg font-bold mb-4">Параметры вашего визита</h3>
+                        <div class="grid sm:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-2">Тариф обслуживания</label>
+                                <select name="tariff" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 font-medium text-sm focus:outline-none focus:border-teal-600">
+                                    <option value="BASIC">Базовый приём (Стандартный кабинет, x1.0)</option>
+                                    <option value="STANDARD" selected>Стандарт Комфорт (Расширенный приём 45 мин, x1.3)</option>
+                                    <option value="VIP">VIP Персональный врач (Без ожидания + палата, x1.8)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-2">Возраст пациента (для подбора отделения)</label>
+                                <input type="number" name="age" value="34" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 font-medium text-sm">
+                            </div>
+                        </div>
+
+                        <label class="block text-xs font-semibold uppercase text-slate-500 mb-3">Дополнительные медицинские опции и полис</label>
+                        <div class="grid sm:grid-cols-3 gap-3 mb-6">
+                            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-teal-50/40">
+                                <input type="checkbox" name="hasInsurance" value="true" checked onchange="submitClinicData()" class="w-4 h-4 accent-teal-600">
+                                <span class="text-xs font-semibold">Полис ДМС (-30% на услугу)</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-teal-50/40">
+                                <input type="checkbox" name="isUrgent" value="true" onchange="submitClinicData()" class="w-4 h-4 accent-teal-600">
+                                <span class="text-xs font-semibold">Срочный приём CITO (+8 000 ₸)</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-teal-50/40">
+                                <input type="checkbox" name="includeLabs" value="true" checked onchange="submitClinicData()" class="w-4 h-4 accent-teal-600">
+                                <span class="text-xs font-semibold">Лабораторная панель (+12 000 ₸)</span>
+                            </label>
+                        </div>
+
+                        <!-- Описание выбранного отделения -->
+                        <div class="bg-teal-50/70 border border-teal-200 rounded-xl p-5">
+                            <div class="text-xs font-bold uppercase text-teal-700 mb-1">Что входит в выбранное направление</div>
+                            <h4 id="serviceCapTitle" class="text-base font-bold text-slate-900 mb-1">Центр кардиологии</h4>
+                            <p id="serviceCapDesc" class="text-sm text-slate-700 mb-3"></p>
+                            <div class="text-xs text-slate-600 font-medium">👨‍⚕️ Ведущий специалист: <strong id="serviceDoctor"></strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Итоговая карточка расчёта стоимости -->
+                    <div class="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col justify-between">
+                        <div>
+                            <span class="text-xs font-semibold uppercase tracking-wider text-teal-400">Расчёт стоимости визита</span>
+                            <div id="servicePriceBig" class="text-4xl font-extrabold mt-2 mb-4">26 600 ₸</div>
+                            <p id="serviceCalcDetails" class="text-xs text-slate-300 leading-relaxed mb-6 border-b border-slate-700 pb-4"></p>
+
+                            <div class="space-y-3 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block">Статус прикрепления ДМС:</span>
+                                    <span id="serviceInsuranceStatus" class="font-semibold text-teal-300"></span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block">Клинический протокол допуска:</span>
+                                    <span id="serviceCombinedScenario" class="font-semibold text-white"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="switchPage('cabinet', 5)" class="mt-8 w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-3.5 rounded-xl transition">
+                            Подтвердить и перейти в медкарту
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- СТРАНИЦА 3: ОНЛАЙН CHECK-UP (SMART TRIAGE И ДИАГНОСТИКА) -->
+        <!-- ======================================================================= -->
+        <section id="page-diagnostics" class="page-section py-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-extrabold text-slate-900">Интеллектуальный онлайн Check-up</h1>
+                    <p class="text-slate-500 text-sm mt-1">Введите текущие показатели самочувствия, чтобы система DClinic оценила уровень медицинского риска и подобрала рекомендации</p>
+                </div>
+
+                <div class="grid lg:grid-cols-12 gap-8">
+                    <!-- Ввод биометрических показателей -->
+                    <div class="lg:col-span-7 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-lg font-bold mb-5">Биометрические показатели пациента</h3>
+                        <div class="grid sm:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Температура тела (°C)</label>
+                                <input type="number" step="0.1" name="temperature" value="36.7" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                                <span class="text-[11px] text-slate-400">Норма: 36.0 – 37.1 °C</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Систолическое давление (мм рт.ст.)</label>
+                                <input type="number" name="systolicBp" value="125" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                                <span class="text-[11px] text-slate-400">Норма: 100 – 135 мм рт.ст.</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Пульс в покое (уд/мин)</label>
+                                <input type="number" name="heartRate" value="74" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                                <span class="text-[11px] text-slate-400">Норма: 60 – 95 уд/мин</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Сатурация кислорода SpO2 (%)</label>
+                                <input type="number" name="spo2" value="98" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                                <span class="text-[11px] text-slate-400">Норма: 96 – 100 %</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Уровень глюкозы крови (ммоль/л)</label>
+                                <input type="number" step="0.1" name="glucose" value="5.2" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                                <span class="text-[11px] text-slate-400">Норма натощак: 3.9 – 5.5 ммоль/л</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Общий индекс самочувствия (0–100 баллов)</label>
+                                <input type="number" name="healthScore" value="84" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                                <span class="text-[11px] text-slate-400">85+ отлично, 70+ хорошо, &lt;50 осмотр</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between flex-wrap gap-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" name="hadInfectionContact" value="true" onchange="submitClinicData()" class="w-4 h-4 accent-teal-600">
+                                <span class="text-sm font-medium text-slate-700">Был контакт с инфекционными больными за последние 7 дней</span>
+                            </label>
+                            <button type="button" onclick="submitClinicData()" class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition">
+                                Обновить заключение
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Карточка врачебного заключения -->
+                    <div class="lg:col-span-5 space-y-4">
+                        <div id="triageCardBox" class="p-6 rounded-2xl border-2 border-emerald-500 bg-emerald-50/70">
+                            <div class="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">Результат Smart-триажа</div>
+                            <h3 id="diagTriageLevel" class="text-xl font-extrabold text-slate-900 mb-2"></h3>
+                            <p id="diagFactors" class="text-xs text-slate-700 font-medium"></p>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-sm">
+                            <div>
+                                <div class="text-xs font-bold uppercase text-slate-400">Анализ сахара в крови</div>
+                                <div id="diagGlucose" class="font-semibold text-slate-800 mt-0.5"></div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold uppercase text-slate-400">Комплексная оценка чекапа</div>
+                                <div id="diagHealthScore" class="font-semibold text-slate-800 mt-0.5"></div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold uppercase text-slate-400">Эпидемиологический допуск</div>
+                                <div id="diagSafety" class="font-semibold text-slate-800 mt-0.5"></div>
+                            </div>
+                            <div class="pt-3 border-t border-slate-100">
+                                <div class="text-xs font-bold uppercase text-teal-600">Персональная рекомендация врача DClinic</div>
+                                <p id="diagPersonalRec" class="text-slate-700 font-medium mt-1 leading-relaxed"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- СТРАНИЦА 4: СКИДКИ, БОНУСЫ И МЕДИЦИНСКАЯ РАССРОЧКА -->
+        <!-- ======================================================================= -->
+        <section id="page-finance" class="page-section py-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-extrabold text-slate-900">Программа лояльности и медицинская рассрочка 0%</h1>
+                    <p class="text-slate-500 text-sm mt-1">Рассчитайте персональную скидку на план лечения и проверьте одобрение беспроцентной рассрочки от клиники</p>
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                        <h3 class="text-lg font-bold">Калькулятор скидки и бюджета</h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Предварительная сумма плана лечения (₸)</label>
+                            <input type="number" name="purchaseAmount" value="55000" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-bold">
+                            <span class="text-[11px] text-slate-400">От 20 000 ₸ — скидка 5%, от 50 000 ₸ — скидка 10% (с VIP-картой до 20%)</span>
+                        </div>
+
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Ежемесячный доход семьи (₸)</label>
+                                <input type="number" name="income" value="380000" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Обязательные расходы в месяц (₸)</label>
+                                <input type="number" name="expenses" value="190000" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                            </div>
+                        </div>
+
+                        <label class="flex items-center gap-3 p-4 rounded-xl border border-amber-300 bg-amber-50/60 cursor-pointer">
+                            <input type="checkbox" name="isVipCard" value="true" checked onchange="submitClinicData()" class="w-4 h-4 accent-amber-600">
+                            <div>
+                                <div class="text-sm font-bold text-slate-900">Клубная карта привилегий DClinic VIP</div>
+                                <div class="text-xs text-slate-600">Даёт повышенную скидку 15–20% и приоритетный приём без ожидания</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-slate-900 to-teal-950 text-white p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-6">
+                                <span class="text-xs font-bold uppercase tracking-wider text-teal-400">Финансовое решение DClinic</span>
+                                <span id="finInstallmentBadge" class="bg-teal-500/20 border border-teal-400/40 text-teal-200 text-xs font-semibold px-3 py-1 rounded-full"></span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 bg-white/10 rounded-xl p-4 mb-6">
+                                <div>
+                                    <div class="text-xs text-slate-300">Персональная скидка</div>
+                                    <div id="finDiscountPercent" class="text-3xl font-extrabold text-amber-400 mt-1">20%</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-slate-300">Итого со скидкой</div>
+                                    <div id="finDiscountedTotal" class="text-3xl font-extrabold text-white mt-1">44 000 ₸</div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 text-sm">
+                                <p id="finDiscountText" class="text-teal-200 font-medium"></p>
+                                <p id="finStatusText" class="text-slate-200 leading-relaxed"></p>
+                                <p id="finPriorityText" class="text-xs text-slate-400 pt-2 border-t border-white/10"></p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 text-xs text-slate-400">
+                            * Рассрочка 0% оформляется онлайн в регистратуре клиники без участия банков за 3 минуты.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- СТРАНИЦА 5: ЛИЧНЫЙ КАБИНЕТ ПАЦИЕНТА И СВОДНАЯ МЕДКАРТА -->
+        <!-- ======================================================================= -->
+        <section id="page-cabinet" class="page-section py-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid lg:grid-cols-12 gap-8">
+                    <!-- Настройки профиля и авторизация -->
+                    <div class="lg:col-span-5 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="text-xl font-extrabold text-slate-900">Авторизация и профиль пациента</h2>
+                        <p class="text-xs text-slate-500">Демо-доступ к врачебному порталу: логин <strong>admin</strong>, пароль <strong>dclinic2026</strong></p>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">ФИО пациента</label>
+                            <input type="text" name="patientName" value="Ахметов Данияр" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-semibold">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Логин</label>
+                                <input type="text" name="login" value="admin" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Пароль</label>
+                                <input type="password" name="password" value="dclinic2026" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Статус электронной медкарты</label>
+                            <select name="userStatus" onchange="submitClinicData()" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-medium">
+                                <option value="ACTIVE" selected>Активный профиль (Все функции открыты)</option>
+                                <option value="INACTIVE">Неактивный профиль (Без начисления скидок)</option>
+                                <option value="BLOCKED">Заблокированный профиль (Тест блокировки доступа)</option>
+                            </select>
+                        </div>
+
+                        <button type="button" onclick="submitClinicData()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition">
+                            Сохранить и обновить медкарту
+                        </button>
+                    </div>
+
+                    <!-- Итоговая выписка из медицинской карты -->
+                    <div class="lg:col-span-7 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-5">
+                            <div>
+                                <span class="text-xs font-bold uppercase text-teal-600">Официальное медицинское заключение</span>
+                                <h3 class="text-xl font-extrabold text-slate-900">Выписка из электронной карты DClinic</h3>
+                            </div>
+                            <span class="text-xs bg-slate-100 text-slate-700 font-semibold px-3 py-1 rounded-lg">Форма №025/у</span>
+                        </div>
+
+                        <div class="space-y-3 text-sm">
+                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                                <span class="text-xs text-slate-400 block">Статус верификации и учётной записи:</span>
+                                <strong id="cabAuthStatus" class="text-slate-800"></strong>
+                            </div>
+                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                                <span class="text-xs text-slate-400 block">Допуск к плановым процедурам (многоуровневый контроль):</span>
+                                <strong id="cabNestedCheck" class="text-slate-800"></strong>
+                            </div>
+                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                                <span class="text-xs text-slate-400 block">Профилактическое направление:</span>
+                                <strong id="cabBaseRec" class="text-slate-800"></strong>
+                            </div>
+                            <div class="p-4 rounded-xl bg-teal-50 border border-teal-200 text-teal-950">
+                                <span class="text-xs font-bold uppercase text-teal-700 block mb-1">Итоговое решение медицинской системы</span>
+                                <p id="cabFinalSummary" class="font-bold leading-relaxed"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- СПЕЦИАЛЬНАЯ ВКЛАДКА ДЛЯ СДАЧИ РАБОТЫ: ОТЧЁТ ПО ВСЕМ 25 ЗАДАЧАМ ТЗ -->
+        <!-- ======================================================================= -->
+        <section id="page-tz" class="page-section py-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex flex-wrap justify-between items-center gap-4 mb-6 pb-4 border-b border-slate-200">
+                        <div>
+                            <span class="text-xs font-bold uppercase text-teal-600">Режим демонстрации для преподавателя</span>
+                            <h2 class="text-2xl font-extrabold text-slate-900">Полная карта выполнения 25 задач ТЗ на Java</h2>
+                            <p class="text-xs text-slate-500 mt-1">Все значения ниже формируются в реальном времени сервером <code>DClinicServer.java</code> на основе данных, введённых на сайте.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="testErrorSection19()" class="text-xs bg-amber-100 text-amber-900 font-semibold px-3 py-2 rounded-lg hover:bg-amber-200">
+                                Проверить ошибку выбора (Задача 19)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tzTasksList" class="grid md:grid-cols-2 gap-3 text-xs"></div>
+                </div>
+            </div>
+        </section>
+    </form>
+
+    <!-- ПОДВАЛ САЙТА -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <strong class="text-white text-sm">DClinic</strong> — Цифровая медицинская платформа • Лицензия МЗ РК №0048291
+            </div>
+            <div>
+                Java 27 Backend • Все права защищены © 2026
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const form = document.getElementById('clinicForm');
+        const pages = ['home', 'services', 'diagnostics', 'finance', 'cabinet', 'tz'];
+
+        function switchPage(pageId, sectionNum) {
+            pages.forEach(id => {
+                const sec = document.getElementById('page-' + id);
+                const nav = document.getElementById('nav-' + id);
+                if (sec) sec.classList.toggle('active', id === pageId);
+                if (nav && id !== 'tz') nav.classList.toggle('active', id === pageId);
+            });
+            document.getElementById('inputSection').value = sectionNum;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            submitClinicData();
+        }
+
+        function setCategory(cat) {
+            document.getElementById('inputServiceCategory').value = cat;
+            ['THERAPY', 'CARDIO', 'DENTAL', 'SURGERY', 'CHECKUP'].forEach(c => {
+                const el = document.getElementById('card-' + c);
+                if (el) el.classList.toggle('selected', c === cat);
+            });
+            submitClinicData();
+        }
+
+        function selectCategoryAndGo(cat) {
+            setCategory(cat);
+            switchPage('services', 4);
+        }
+
+        function testErrorSection19() {
+            document.getElementById('inputSection').value = 99;
+            submitClinicData();
+        }
+
+        async function submitClinicData() {
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+            for (const [k, v] of formData.entries()) {
+                params.append(k, v);
+            }
+
+            const res = await fetch('/api/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: params.toString()
+            });
+            const d = await res.json();
+
+            const errBanner = document.getElementById('globalErrorBanner');
+            const errText = document.getElementById('globalErrorText');
+
+            if (!d.success) {
+                errBanner.classList.remove('hidden');
+                errText.textContent = d.errorMessage;
+                return;
+            }
+            errBanner.classList.add('hidden');
+
+            // Обновление Шапки и Главной страницы
+            document.getElementById('headerStatusBadge').textContent = d.statusBadge;
+            document.getElementById('heroPatientName').textContent = d.patientName;
+            document.getElementById('heroAgeDept').textContent = d.task6_age;
+            document.getElementById('heroSelectedService').textContent = d.categoryTitle;
+            document.getElementById('heroDoctorName').textContent = d.doctorName;
+            document.getElementById('heroServiceCost').textContent = d.calculatedCost;
+            document.getElementById('heroPriorityText').textContent = d.task8_or;
+
+            const heroBadge = document.getElementById('heroTriageBadge');
+            heroBadge.textContent = d.task23_level;
+            heroBadge.className = 'text-white text-xs font-bold px-3 py-1 rounded-full ' +
+                (d.triageColor === 'RED' ? 'bg-red-600' : d.triageColor === 'AMBER' ? 'bg-amber-500' : 'bg-emerald-500');
+
+            // Обновление страницы Услуг
+            document.getElementById('serviceCapTitle').textContent = d.categoryTitle;
+            document.getElementById('serviceCapDesc').textContent = d.task17_category;
+            document.getElementById('serviceDoctor').textContent = d.doctorName;
+            document.getElementById('servicePriceBig').textContent = d.calculatedCost;
+            document.getElementById('serviceCalcDetails').textContent = d.task18_calculator;
+            document.getElementById('serviceInsuranceStatus').textContent = d.task7_and;
+            document.getElementById('serviceCombinedScenario').textContent = d.task20_combined;
+
+            // Обновление страницы Диагностики
+            const triageBox = document.getElementById('triageCardBox');
+            triageBox.className = 'p-6 rounded-2xl border-2 ' +
+                (d.triageColor === 'RED' ? 'border-red-500 bg-red-50/70' :
+                 d.triageColor === 'AMBER' ? 'border-amber-500 bg-amber-50/70' :
+                 'border-emerald-500 bg-emerald-50/70');
+            document.getElementById('diagTriageLevel').textContent = d.task23_level;
+            document.getElementById('diagFactors').textContent = d.task21_22_analysis;
+            document.getElementById('diagGlucose').textContent = d.task4_glucose;
+            document.getElementById('diagHealthScore').textContent = d.task13_score;
+            document.getElementById('diagSafety').textContent = d.task14_safety;
+            document.getElementById('diagPersonalRec').textContent = d.task24_personalRec;
+
+            // Обновление страницы Финансов и Скидок
+            document.getElementById('finInstallmentBadge').textContent = d.installmentBadge;
+            document.getElementById('finDiscountPercent').textContent = d.discountPercent;
+            document.getElementById('finDiscountedTotal').textContent = d.discountedTotal;
+            document.getElementById('finDiscountText').textContent = d.task11_discount;
+            document.getElementById('finStatusText').textContent = d.task12_finance;
+            document.getElementById('finPriorityText').textContent = d.task8_or;
+
+            // Обновление Личного кабинета
+            document.getElementById('cabAuthStatus').textContent = d.task5_auth + ' (' + d.task3_status + ' • ' + d.task9_not + ')';
+            document.getElementById('cabNestedCheck').textContent = d.task10_nested;
+            document.getElementById('cabBaseRec').textContent = d.task15_baseRec;
+            document.getElementById('cabFinalSummary').textContent = d.task25_summary;
+
+            // Обновление вкладки проверки 25 задач ТЗ
+            const items = [
+                ['Задача 1 (Главное меню)', d.task1_menu],
+                ['Задача 2 (Проверка ввода)', 'Все поля и числовые параметры проверены — ошибок нет.'],
+                ['Задача 3 (Статус if-else)', d.task3_status],
+                ['Задача 4 (Показатель глюкозы)', d.task4_glucose],
+                ['Задача 5 (Проверка пароля)', d.task5_auth],
+                ['Задача 6 (Возраст if-else if)', d.task6_age],
+                ['Задача 7 (Оператор &&)', d.task7_and],
+                ['Задача 8 (Оператор ||)', d.task8_or],
+                ['Задача 9 (Оператор !)', d.task9_not],
+                ['Задача 10 (Вложенные if)', d.task10_nested],
+                ['Задача 11 (Система скидок)', d.task11_discount],
+                ['Задача 12 (Финансовый статус)', d.task12_finance],
+                ['Задача 13 (Оценка по баллам)', d.task13_score],
+                ['Задача 14 (Безопасность и риск)', d.task14_safety],
+                ['Задача 15 (Базовая рекомендация)', d.task15_baseRec],
+                ['Задача 16 и 19 (Switch разделов)', d.task16_section],
+                ['Задача 17 и 19 (Категории услуг)', d.task17_category],
+                ['Задача 18 (Калькулятор тарифа)', d.task18_calculator],
+                ['Задача 20 (Switch + if-else + логика)', d.task20_combined],
+                ['Задача 21 и 22 (Анализ 5+ параметров)', d.task21_22_analysis],
+                ['Задача 23 (3 уровня результата)', d.task23_level],
+                ['Задача 24 (Персональная рекомендация)', d.task24_personalRec],
+                ['Задача 25 (Итоговый отчёт)', d.task25_summary]
+            ];
+
+            document.getElementById('tzTasksList').innerHTML = items.map(([title, val]) => `
+                <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                    <div class="font-bold text-teal-800 mb-1">${title}</div>
+                    <div class="text-slate-700">${val}</div>
+                </div>
+            `).join('');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => submitClinicData());
+    </script>
+</body>
+</html>
